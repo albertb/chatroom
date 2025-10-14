@@ -1,0 +1,46 @@
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.7/dist/htmx.min.js"
+        integrity="sha384-ZBXiYtYQ6hJ2Y0ZNoYuI+Nq5MqWBr+chMrS/RkXpNzQCApHEhOt2aY8EJgqwHLkJ"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/htmx-ext-ws@2.0.2/ws.js"
+        integrity="sha256-+XnVDV2b+a8RsUFJ7sVNdJMK+jK+ZAH/wmItN6+KEfg=" crossorigin="anonymous"></script>
+    <style>
+        #messages {
+            height: 60vh;
+            overflow: auto;
+        }
+
+        .message {
+            background-color: var(--pico-primary-hover-background);
+            color: var(--pico-primary-inverse);
+            padding: 0.5rem;
+            border-radius: 10px;
+            margin-bottom: 0.25rem;
+        }
+    </style>
+    <title>Chatroom</title>
+</head>
+
+<body>
+    <main class="container">
+        <article id="wrapper" hx-ext="ws" ws-connect="/ws">
+            <header>
+                <strong>Chatroom</strong>
+            </header>
+            <div id="messages"></div>
+            <footer>
+                <form id="send" ws-send>
+                    <fieldset class="grid">
+                        <input type="text" name="sender" value="guest" placeholder="Name">
+                        <input type="text" name="content" placeholder="Message">
+                        <input type="submit" value="Send">
+                    </fieldset>
+                </form>
+            </footer>
+        </article>
+    </main>
+</body>
