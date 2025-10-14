@@ -100,7 +100,7 @@ pub fn main() {
               let client = RoomClient(subject: process.new_subject())
               process.send(chatroom.data, Register(client))
 
-              // Create a selector that listens to messages sent to the client.
+              // Create a selector that listens for messages sent to the client.
               let selector =
                 process.select(process.new_selector(), client.subject)
 
@@ -116,7 +116,7 @@ pub fn main() {
                   // This is a text message received from the web page.
                   logging.log(logging.Debug, "Websocket text: " <> text)
 
-                  // The HTMX websocket extension serializes the from fields into a JSON string.
+                  // The HTMX websocket extension serializes the form fields into a JSON string.
                   // We extract just the relevant fields here.
                   let decoder = {
                     use sender <- decode.field("sender", decode.string)
