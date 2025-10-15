@@ -1,90 +1,46 @@
 /// A simple web-based chatroom
+import chatroom/chat
+import chatroom/history
+import chatroom/room
 import gleam/bytes_tree
 import gleam/dynamic/decode
 import gleam/erlang/process
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/json
-import gleam/list
 import gleam/option.{Some}
-import gleam/otp/actor
 import gleam/result
 import gleam/string
 import gleam/string_tree
+import gleam/uri
 import handles
 import handles/ctx
 import logging
 import mist.{type Connection, type ResponseData}
 import simplifile
 
-/// The message broadcast by the room actor to registered clients.
-pub type ChatMessage {
-  ChatMessage(sender: String, content: String)
-}
-
-/// The client actor that listens for chat messages.
-pub type RoomClient {
-  RoomClient(subject: process.Subject(ChatMessage))
-}
-
-/// The state of the room is the list of its registered clients.
-pub type RoomState {
-  RoomState(clients: List(RoomClient))
-}
-
-/// The messages that clients send to the room actor.
-pub type RoomMessage {
-  Publish(sender: String, content: String)
-  Register(client: RoomClient)
-  Unregister(client: RoomClient)
-}
-
-/// The main loop for the room actor.
-fn chatroom_loop(state: RoomState, message: RoomMessage) {
-  case message {
-    Publish(sender, content) -> {
-      logging.log(logging.Info, "Publish from " <> sender <> ": " <> content)
-      state.clients
-      |> list.each(fn(c) {
-        process.send(c.subject, ChatMessage(sender, content))
-      })
-      state |> actor.continue
-    }
-
-    Register(client) -> {
-      logging.log(logging.Debug, "Register: " <> string.inspect(client))
-      RoomState([client, ..state.clients]) |> actor.continue
-    }
-
-    Unregister(client) -> {
-      logging.log(logging.Debug, "Unregister: " <> string.inspect(client))
-      RoomState(list.filter(state.clients, fn(c) { c != client }))
-      |> actor.continue
-    }
-  }
-}
-
 pub fn main() {
   logging.configure()
   logging.set_level(logging.Info)
 
-  // Start the room actor.
-  let assert Ok(chatroom) =
-    actor.new(RoomState([]))
-    |> actor.on_message(chatroom_loop)
-    |> actor.start
+  // Start the history and room actors.
+  let history = history.start()
+  let chatroom = room.start(history)
 
   let assert Ok(_) =
     fn(req: Request(Connection)) -> Response(ResponseData) {
       logging.log(
         logging.Debug,
-        "Request from: " <> string.inspect(mist.get_client_info(req.body)),
+        "Request "
+          <> uri.to_string(request.to_uri(req))
+          <> " from: "
+          <> string.inspect(mist.get_client_info(req.body)),
       )
       case request.path_segments(req) {
         // The empty path serves home_page.html from disk.
         [] -> {
           let content =
-            simplifile.read("web/home_page.html")
+            simplifile.read("web/home.html")
             |> result.unwrap("failed to read home_page.html")
 
           response.new(200)
@@ -97,8 +53,8 @@ pub fn main() {
             request: req,
             on_init: fn(_conn) {
               // Create a new client, and register it with the room.
-              let client = RoomClient(subject: process.new_subject())
-              process.send(chatroom.data, Register(client))
+              let client = room.RoomClient(subject: process.new_subject())
+              process.send(chatroom, room.Register(client))
 
               // Create a selector that listens for messages sent to the client.
               let selector =
@@ -108,7 +64,7 @@ pub fn main() {
             },
             on_close: fn(client) {
               // Unregister clients when they close the websocket connection.
-              process.send(chatroom.data, Unregister(client))
+              process.send(chatroom, room.Unregister(client))
             },
             handler: fn(client, message, conn) {
               case message {
@@ -127,11 +83,12 @@ pub fn main() {
                     json.parse(from: text, using: decoder)
 
                   // Publish the message to the room actor.
-                  chatroom.data |> process.send(Publish(sender, content))
+                  chatroom |> process.send(room.Publish(sender, content))
+
                   mist.continue(client)
                 }
 
-                mist.Custom(ChatMessage(sender, content)) -> {
+                mist.Custom(chat.ChatMessage(sender, content)) -> {
                   // This is a ChatMessage from the room actor.
                   logging.log(
                     logging.Debug,
@@ -140,8 +97,8 @@ pub fn main() {
 
                   // Render the HTML to swap onto the page.
                   let text = render_message(sender, content)
-
                   let assert Ok(_) = mist.send_text_frame(conn, text)
+
                   mist.continue(client)
                 }
 
@@ -161,6 +118,7 @@ pub fn main() {
       }
     }
     |> mist.new
+    |> mist.bind("0.0.0.0")
     |> mist.port(9999)
     |> mist.start
 
