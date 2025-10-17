@@ -1,7 +1,13 @@
-<form id="send" ws-send {{#if oob}}hx-swap-oob="outerHTML" hx-target="#send"{{/if}}>
+<form id="send" ws-send>
     <input type="hidden" name="sender" value="{{sender}}">
+    <label>Message</label>
     <fieldset role="group">
-        <input type="text" name="content" placeholder="Message">
+        <input type="text" name="content" placeholder="Message" autofocus autocomplete="off">
         <input type="submit" value="Send">
     </fieldset>
+    <script>
+        // Reset the message form after submitting.
+        // TODO: For some reason, hx-on:htmx:wsAfterSend doesn't trigger on the form.
+        document.body.addEventListener('htmx:wsAfterSend', function (evt) { evt.target.reset() })
+    </script>
 </form>

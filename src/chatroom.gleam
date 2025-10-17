@@ -69,9 +69,7 @@ pub fn main() {
 
               response.new(200)
               |> response.set_body(
-                mist.Bytes(
-                  bytes_tree.from_string(render_chat_form(sender, False)),
-                ),
+                mist.Bytes(bytes_tree.from_string(render_chat_form(sender))),
               )
             }
           }
@@ -128,8 +126,6 @@ pub fn main() {
                   // Render the HTML to swap onto the page.
                   let assert Ok(_) =
                     mist.send_text_frame(conn, render_message(sender, content))
-                  let assert Ok(_) =
-                    mist.send_text_frame(conn, render_chat_form(sender, True))
 
                   mist.continue(client)
                 }
@@ -158,8 +154,7 @@ pub fn main() {
 }
 
 /// Renders the chat from using the specified name.
-/// When returing the form via the websocket, oob should be true for HTMX to swap out the existing form.
-fn render_chat_form(sender: String, oob: Bool) -> String {
+fn render_chat_form(sender: String) -> String {
   let assert Ok(source) = simplifile.read("web/chat.html")
   let assert Ok(template) = handles.prepare(source)
   let assert Ok(rendered) =
@@ -167,7 +162,6 @@ fn render_chat_form(sender: String, oob: Bool) -> String {
       template,
       ctx.Dict([
         ctx.Prop("sender", ctx.Str(sender)),
-        ctx.Prop("oob", ctx.Bool(oob)),
       ]),
       [],
     )

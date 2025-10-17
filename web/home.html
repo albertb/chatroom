@@ -9,8 +9,24 @@
     <script src="https://cdn.jsdelivr.net/npm/htmx-ext-ws@2.0.2/ws.js"
         integrity="sha256-+XnVDV2b+a8RsUFJ7sVNdJMK+jK+ZAH/wmItN6+KEfg=" crossorigin="anonymous"></script>
     <style>
+        main {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        article {
+            display: flex;
+            flex-direction: column;
+            height: 95%;
+        }
+
+        article>header,
+        article>footer {
+            flex-grow: 0;
+        }
+
         #messages {
-            height: 60vh;
+            flex-grow: 1;
             overflow: auto;
         }
 
@@ -26,14 +42,14 @@
 </head>
 
 <body>
-    <main class="container">
+    <main class="container-fluid">
         <article id="wrapper" hx-ext="ws" ws-connect="/ws">
             <header>
                 <strong>Chatroom</strong>
             </header>
-            <div id="messages" htmx:></div>
+            <div id="messages"></div>
             <footer>
-                <form hx-post="/chat" hx-swap="outerHTML">
+                <form hx-post=" /chat" hx-swap="outerHTML">
                     <label>What's your name?</label>
                     <fieldset role="group">
                         <input type="text" name="sender" placeholder="Guest">
@@ -43,18 +59,13 @@
             </footer>
         </article>
     </main>
-    <script lang="javascript">
-        function scrollToBottom(elementId) {
-            const element = document.getElementById(elementId);
-            if (element) {
-                element.scrollTop = element.scrollHeight;
-            }
-        }
-        document.body.addEventListener('htmx:afterSwap', function (evt) {
-            console.log("id=" + evt.target.id)
-            if (evt.target.id == 'messages') {
-                scrollToBottom(evt.target)
-            }
+    <script>
+        document.addEventListener('htmx:oobAfterSwap', function () {
+            const e = document.getElementById('messages')
+            e.lastElementChild.scrollIntoView({
+                behavior: 'smooth',
+                blocke: 'end'
+            })
         })
     </script>
 </body>
