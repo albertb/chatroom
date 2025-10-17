@@ -1,0 +1,7 @@
+<form id="send" ws-send {{#if oob}}hx-swap-oob="outerHTML" hx-target="#send"{{/if}}>
+    <input type="hidden" name="sender" value="{{sender}}">
+    <fieldset role="group">
+        <input type="text" name="content" placeholder="Message">
+        <input type="submit" value="Send">
+    </fieldset>
+</form>

@@ -31,16 +31,30 @@
             <header>
                 <strong>Chatroom</strong>
             </header>
-            <div id="messages"></div>
+            <div id="messages" htmx:></div>
             <footer>
-                <form id="send" ws-send>
-                    <fieldset class="grid">
-                        <input type="text" name="sender" value="guest" placeholder="Name">
-                        <input type="text" name="content" placeholder="Message">
-                        <input type="submit" value="Send">
+                <form hx-post="/chat" hx-swap="outerHTML">
+                    <label>What's your name?</label>
+                    <fieldset role="group">
+                        <input type="text" name="sender" placeholder="Guest">
+                        <input type="submit">
                     </fieldset>
                 </form>
             </footer>
         </article>
     </main>
+    <script lang="javascript">
+        function scrollToBottom(elementId) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.scrollTop = element.scrollHeight;
+            }
+        }
+        document.body.addEventListener('htmx:afterSwap', function (evt) {
+            console.log("id=" + evt.target.id)
+            if (evt.target.id == 'messages') {
+                scrollToBottom(evt.target)
+            }
+        })
+    </script>
 </body>

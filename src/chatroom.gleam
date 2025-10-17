@@ -2,6 +2,7 @@
 import chatroom/chat
 import chatroom/history
 import chatroom/room
+import gleam/bit_array
 import gleam/bytes_tree
 import gleam/dynamic/decode
 import gleam/erlang/process
@@ -45,6 +46,35 @@ pub fn main() {
 
           response.new(200)
           |> response.set_body(mist.Bytes(bytes_tree.from_string(content)))
+        }
+
+        ["chat"] -> {
+          case mist.read_body(req, 1024) {
+            Error(_) ->
+              response.new(500)
+              |> response.set_body(mist.Bytes(bytes_tree.new()))
+            Ok(body) -> {
+              // The form fields are URL-encoded, extract the value of the "sender" field.
+              let #(_, sender) =
+                bit_array.to_string(body.body)
+                |> result.map(fn(content) { string.split_once(content, "=") })
+                |> result.flatten()
+                |> result.unwrap(#("_", "guest"))
+
+              // Make sure the sender isn't empty.
+              let sender = case string.length(sender) {
+                n if n > 0 -> sender
+                _ -> "guest"
+              }
+
+              response.new(200)
+              |> response.set_body(
+                mist.Bytes(
+                  bytes_tree.from_string(render_chat_form(sender, False)),
+                ),
+              )
+            }
+          }
         }
 
         // The /ws path is the websocket that the web page connects to.
@@ -96,8 +126,10 @@ pub fn main() {
                   )
 
                   // Render the HTML to swap onto the page.
-                  let text = render_message(sender, content)
-                  let assert Ok(_) = mist.send_text_frame(conn, text)
+                  let assert Ok(_) =
+                    mist.send_text_frame(conn, render_message(sender, content))
+                  let assert Ok(_) =
+                    mist.send_text_frame(conn, render_chat_form(sender, True))
 
                   mist.continue(client)
                 }
@@ -123,6 +155,23 @@ pub fn main() {
     |> mist.start
 
   process.sleep_forever()
+}
+
+/// Renders the chat from using the specified name.
+/// When returing the form via the websocket, oob should be true for HTMX to swap out the existing form.
+fn render_chat_form(sender: String, oob: Bool) -> String {
+  let assert Ok(source) = simplifile.read("web/chat.html")
+  let assert Ok(template) = handles.prepare(source)
+  let assert Ok(rendered) =
+    handles.run(
+      template,
+      ctx.Dict([
+        ctx.Prop("sender", ctx.Str(sender)),
+        ctx.Prop("oob", ctx.Bool(oob)),
+      ]),
+      [],
+    )
+  string_tree.to_string(rendered)
 }
 
 /// Renders a message bubble to be added to the web page.
